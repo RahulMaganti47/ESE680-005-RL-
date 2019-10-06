@@ -33,9 +33,8 @@ class DiscreteSoftmaxPolicy(object):
 
     # TODO: fill this function in
     # computes the gradient of the discounted return 
-    # at a specific state and actio
+    # at a specific state and action
     # return the gradient, a (self.num_states, self.num_actions) numpy array 
-    
     def compute_gradient(self, state, action, discounted_return): 
         grad = np.zeros((self.num_states, self.num_actions)) 
         policy_a = self.get_logits(state)
