@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.distributions import Normal
 from decimal import Decimal 
+import copy as cp
 
 
 class Policy(nn.Module):
@@ -18,8 +19,10 @@ class Policy(nn.Module):
         self.num_states = num_states
         self.num_actions = num_actions
         
-        self.layer1 = nn.Linear(self.num_states, 128, bias=False)
-        self.action_mu = nn.Linear(128, self.num_actions, bias=False) 
+        self.layer1 = nn.Linear(self.num_states, 20, bias=False)
+        self.action_mu = nn.Linear(20, self.num_actions, bias=False) 
+
+        self.action_sigma = nn.Linear(20, self.num_actions, bias=False)
              
         #maybe doesn't need to be in the policy
         # Episode policy and reward history 
@@ -38,13 +41,22 @@ class Policy(nn.Module):
             self.action_mu,
             nn.Softmax(dim=-1) 
         ) 
-        return model(x) 
+
+        model2 = torch.nn.Sequential(
+            self.layer1, 
+            nn.Dropout(p=0.6),
+                nn.ReLU(), 
+            self.action_sigma, 
+            nn.Softmax(dim=-1)
+        )
+
+        return model(x), model2(x)
 
 def act(state, policy, sigma):
     #Select an action (0 or 1) by running policy model and choosing based on the probabilities in state
     state = torch.from_numpy(state).type(torch.double)
-    action_mean = policy(Variable(state))
-    dist = Normal(action_mean, sigma)
+    action_mean, action_std = policy(Variable(state))
+    dist = Normal(action_mean, action_std)
     action = dist.sample()
     
     # TODO: Move this to its own function
@@ -56,7 +68,7 @@ def act(state, policy, sigma):
     return action, dist.log_prob(action)
     
 def get_discounted_returns(rewardsList, gamma):
-    #Nikil's vectorized version
+    #vectorized version
     rewards = np.array(rewardsList)
     rewards = rewards.reshape(1,rewards.size)
     to_the_nth = np.arange(rewards.size).reshape(rewards.shape)
@@ -70,9 +82,9 @@ def update_policy(discounted_returns, gamma):
     # Calculate loss
     loss = (torch.sum(torch.mul(policy.policy_history, Variable(discounted_returns)).mul(-1), -1))
 
-    # Update network weights
+    # Update network weights 
     optimizer.zero_grad()
-    loss.backward()
+    loss.sum().backward()
     optimizer.step()
  
     return loss
@@ -97,7 +109,7 @@ def reinforce(env, policy, gamma, num_episodes, learning_rate, sigma):
             policy.rewards_this_episode.append(reward)
             policy.states_history.append(next_state)
             score += reward 
-            state = next_state
+            state = cp.deepcopy(next_state) 
 
             #prevent over-long, never-ending trials
             if t==999:
@@ -129,7 +141,7 @@ if __name__ == "__main__":
     gamma = .99
     learning_rate = 0.01 
     num_episodes = 10000
-    sigma = .1
+    sigma = .01
 
     policy = Policy(2, 1).double()
     optimizer = optim.Adam(policy.parameters(), lr=learning_rate)
