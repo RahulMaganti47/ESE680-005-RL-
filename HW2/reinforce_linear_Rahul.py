@@ -89,7 +89,7 @@ class LinearPolicy(object):
 # and returns a list of discounted rewards
 # Ex. get_discounted_returns([1, 1, 1], 0.5)
 # should return [1.75, 1.5, 1]
-def get_discounted_returns(rewardsList, gamma, time_steps):
+def get_discounted_returns(rewardsList, gamma):
     '''
     #Rahul's version
     moving_add = 0 
@@ -146,14 +146,9 @@ def reinforce(env, policy, gamma, num_episodes, learning_rate):
         print("score: ", score,"\n")
 
         #learn from this episode
-        discounted_returns = get_discounted_returns(rewards, gamma, num_time_steps) 
+        discounted_returns = get_discounted_returns(rewards, gamma) 
         grad = np.zeros(policy.K.shape)
         grad += policy.compute_gradient(np.array(states), np.array(actions), discounted_returns)
-        '''
-        for t in range(num_time_steps):
-            grad += policy.compute_gradient(states[t], actions[t], discounted_return[t])
-            #print("gradient: ", grad)
-        '''
         policy.gradient_step(grad, learning_rate)
          
     return policy.K 
