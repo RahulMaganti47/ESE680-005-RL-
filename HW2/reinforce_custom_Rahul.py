@@ -1,5 +1,4 @@
 from mountain_car import *
-import gym
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm, trange
@@ -37,13 +36,13 @@ class Policy(nn.Module):
         model = torch.nn.Sequential(
             self.l1,
             nn.Dropout(p=0.6),
-            nn.ReLU(),
+              nn.ReLU(),
             self.l2,
             nn.Softmax(dim=-1)
         ) 
         return model(x) 
 
-policy = Policy()
+policy = Policy(2, 1)
 optimizer = optim.Adam(policy.parameters(), lr=learning_rate)
 
 def select_action(state):
@@ -59,7 +58,11 @@ def select_action(state):
     else:
         policy.policy_history = (c.log_prob(action))
     return action
-
+    a
+def discounted_rewards(rewards, gamma):
+    for i in reversed(range(0, len(rewards))): 
+        moving_add = 
+    
 def update_policy():
     R = 0
     rewards = []
