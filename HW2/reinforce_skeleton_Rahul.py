@@ -56,7 +56,6 @@ class DiscreteSoftmaxPolicy(object):
 # and returns a list of discounted rewards
 # Ex. get_discounted_returns([1, 1, 1], 0.5)
 # should return [1.75, 1.5, 1]
-
 def discounts_rewards(rewards, gamma, time_steps):
     moving_addition = 0
     discounted_returns = np.zeros(time_steps)
@@ -64,6 +63,16 @@ def discounts_rewards(rewards, gamma, time_steps):
         moving_addition = moving_addition * gamma + rewards[i] 
         discounted_returns[i] = moving_addition
     return discounted_returns
+
+    '''
+    #Nikil's vectorized version
+    rewards = rewards.reshape(1,rewards.size)
+    to_the_nth = np.arange(rewards.size).reshape(rewards.shape)
+    grid = (to_the_nth) + (-1*to_the_nth.transpose())
+    gamma_grid = np.power(gamma,grid)
+    gamma_grid[grid<0]= 0
+    return np.sum(rewards*gamma_grid,axis=1)
+    '''
 
 # TODO: fill this function in 
 # this will take in an environment, GridWorld

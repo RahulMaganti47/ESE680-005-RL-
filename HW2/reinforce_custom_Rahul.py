@@ -10,7 +10,7 @@ class CustomPolicy(nn.Module):
         self.num_states = num_states 
         self.num_actions = num_actions
 
-        #128 hidden layers and input features of size 4
+        #128 hidden layers and input features of position and velocity (num_states)
         self.w1 = nn.Linear(self.num_states, 128, bias=False)
         #from hidden layer to output (# of actions)
         self.w2 = nn.Linear(128, self.num_actions, bias=False)   
@@ -66,8 +66,8 @@ optimizer = optim.Adam(policy.parameters(), lr=.01)
 # and returns a list of discounted rewards
 # Ex. get_discounted_returns([1, 1, 1], 0.5)
 # should return [1.75, 1.5, 1]
-def get_discounted_returns(rewards, gamma):
-
+def get_discounted_returns(rewardsList, gamma):
+    '''
     total_sum = 0
     discounted_returns =[]
     for i in reversed(range(0, len(rewards))): 
@@ -75,8 +75,15 @@ def get_discounted_returns(rewards, gamma):
         discounted_returns[i] = total_sum
     
     return discounted_returns
-
-
+    '''
+    #Nikil's vectorized version
+    rewards = np.array(rewardsList)
+    rewards = rewards.reshape(1,rewards.size)
+    to_the_nth = np.arange(rewards.size).reshape(rewards.shape)
+    grid = (to_the_nth) + (-1*to_the_nth.transpose())
+    gamma_grid = np.power(gamma,grid)
+    gamma_grid[grid<0]= 0
+    return np.sum(rewards*gamma_grid,axis=1)
 
 # TODO: fill this function in  
 # this will take in an environment, GridWorld
@@ -89,15 +96,29 @@ def reinforce(env, policy, gamma, num_episodes, learning_rate):
         rewards = [] 
         states = []
         actions = [] 
+
         t = 0
+        score = 0
         state = env.reset()
-        #step throuhgh env: run policy through sample trajectory
+        print("Episode # ", i)
+        #step through env: run policy through sample trajectory
         while not done: 
             action = policy.act(state)
             next_state, reward, done, _ = env.step(action[0].data)
             rewards.append(reward)
             states.append(next_state)
             actions.append(action)
+
+            score += reward 
+            state = next_state
+
+            #prevent over-long, never-ending trials
+            if t==999:
+                done = True
+            
+            t += 1
+        num_time_steps = t
+        print("score: ", score,"\n")
     
         #update network weights
         # take gradient
