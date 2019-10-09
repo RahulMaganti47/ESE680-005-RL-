@@ -109,7 +109,7 @@ def reinforce(env, policy, gamma, num_episodes, learning_rate, sigma):
         
         discounted_returns = get_discounted_returns(policy.rewards_this_episode, gamma) 
         # convert to tensor
-        discounted_returns = torch.FloatTensor(discounted_returns)
+        discounted_returns = torch.FloatTensor(discounted_returns).type(torch.double)
 
         #learn from this episode
         loss = update_policy(discounted_returns, gamma)
