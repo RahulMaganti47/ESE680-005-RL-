@@ -25,7 +25,7 @@ class ContinuousPolicy(nn.Module):
          
         self.layer1 = nn.Linear(self.num_states, 20, bias=False)
         self.action_mu = nn.Linear(20, self.num_actions, bias=False) 
-        self.policy_history = torch.Tensor([]).double()
+        self.policy_history = torch.Tensor(()).double()
         
 
         self.model = torch.nn.Sequential( 
@@ -56,9 +56,20 @@ def act(state, policy):
     #dist = Normal(action_mean, action_std)
     action = dist.sample()
     
-    log_a = dist.log_prob(action).double() 
+    log_a = dist.log_prob(action)
+    # pylint: disable=E1101 
+    #print(policy.policy_history)
+    #print(policy.policy_history.size())
+
+    if policy.policy_history.size()[0] != 0:
+            # pylint: disable=E1101 
+            policy.policy_history = torch.cat([policy.policy_history, log_a])
+            # pylint: enable=E1101
+    else:
+        policy.policy_history = log_a
     
-    torch.cat([policy.policy_history, log_a], dim=0) 
+    #torch.cat([policy.policy_history, log_a], dim=1) 
+    # pylint: enable=E1101  
     #log_b = log_a.detach().numpy() 
     #policy.policy_history.append(log_b[0])
     
@@ -79,13 +90,13 @@ def update_policy(discounted_returns, gamma, policy, optimizer):
     # pylint: disable=E1101
     # pylint: enable=E110
     optimizer.zero_grad()
-    print(policy.policy_history)
     # pylint: disable=E1101 
-    discounted_returns = Variable(discounted_returns)
-    print(policy.policy_history.size())
-    print(discounted_returns.t().size())     
-    
-    loss = torch.sum(torch.mul(policy.policy_history, discounted_returns.t().mul(-1)), -1)   
+    discounted_returns = Variable(discounted_returns) 
+    #print(policy.policy_history.size()) 
+    #print(discounted_returns.size())
+
+    loss = torch.sum(torch.mul(policy.policy_history, discounted_returns.mul(-1)), -1)  
+    #print("loss; ", loss) 
     # pylint: disable=E1101
     loss.backward()
     optimizer.step()
@@ -113,11 +124,12 @@ class LinearValueEstimator(nn.Module):
         estimate = self.model(state)
         return estimate 
 
-    def update(self, value_estimates, target, optimizer):
+    def update(self, value_estimate, target, optimizer):
         target = torch.from_numpy(np.array(target))
         loss = nn.MSELoss()
-        loss_output = loss(value_estimates[0], target)
-        optimizer.zero_grad() 
+        loss_output = loss(value_estimate, target)
+        print(loss_output)
+        optimizer.zero_grad()
         loss_output.backward()  
         optimizer.step() 
     
@@ -166,7 +178,9 @@ def get_discounted_returns(rewards, gamma, time_steps):
 # Using the computed baseline, compute the advantage. 
 # Use this advantage in the policy gradient calculation
 def reinforce(env, policy,value_estimator, optimizer_p, optimizer_b, gamma, num_episodes):
+    
     for episode in range(num_episodes):
+        policy.policy_history = Variable(torch.Tensor())
         states = []
         rewards = []
         actions = []
@@ -195,17 +209,22 @@ def reinforce(env, policy,value_estimator, optimizer_p, optimizer_b, gamma, num_
         disc_ret_ten = torch.FloatTensor(discounted_returns_adj).type(torch.double)
 
         advantages = []
-        # update the policy with SGD 
+        # update the policy with SGD a
+        """
         for t in range(episode_length):
             estimate = value_estimator(states[t]) 
             estinate = estimate.detach().numpy()
+            #estimate_l.append(estinate)
             advantage = discounted_returns_adj[t] - estinate[0] 
             advantages.append(advantage)  
-            value_estimator.update(estimate, disc_ret_ten[t], optimizer_b) 
+        """
+        #value_estimator.update(estimate_l, disc_ret_ten, optimizer_b) 
+        advantages_ten = torch.FloatTensor(advantages).type(torch.double)
+        update_policy(disc_ret_ten, gamma, policy, optimizer_p) 
         
-        advantages_arr = np.asarray(advantages) 
-        advantages_arr = torch.FloatTensor(advantages_arr).type(torch.double)
-        update_policy(advantages_arr, gamma, policy, optimizer_p)
+    #advantages_arr = np.asarray(advantages) 
+    #advantages_arr = torch.FloatTensor(advantages_arr).type(torch.double)
+           
 
         
 
@@ -214,12 +233,12 @@ def reinforce(env, policy,value_estimator, optimizer_p, optimizer_b, gamma, num_
 if __name__ == "__main__":
     gamma = .999 
     env = Continuous_Pendulum()
-    seed = 0  
+    seed = 3
     np.random.seed(seed)
     num_episodes = 2000 
     #define optimizer for policys
-    lr_p = 1e-3 
-    lr_b = 1e-4
+    lr_p = 1e-3
+    lr_b = .1
     #define optimizer for value estimator
     # TODO: define num_states and num_actions 
     policy = ContinuousPolicy(3, 1, 2).double()
