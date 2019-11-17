@@ -11,7 +11,7 @@ import random
 class QLearning(object):
     # Initialize a Qlearning object
     # alpha is the "learning_rate"
-    def __init__(self, num_states, num_actions, eps, learning_rate=0.9, discount_factor=.999):
+    def __init__(self, num_states, num_actions, eps, learning_rate=0.5, discount_factor=.999):
          # initialize Q values to something
         self.num_states = num_states
         self.num_actions = num_actions  
@@ -29,10 +29,11 @@ class QLearning(object):
         num_actions = len(actions)
         rand_action = np.random.choice(num_actions)
         temp_rand = random.uniform(0, 1)
-        if (eps > temp_rand):
-            return max_action
-        else: 
-            return rand_action
+        # choose random action with probability epsilon  
+        if (eps > temp_rand):  
+            return max_action 
+        else:
+             return rand_action
 
     # TODO: fill in this function
     # updates the Q value table
@@ -52,6 +53,7 @@ class QLearning(object):
         self.q_table[state, action] += self.learning_rate*(q_target - self.q_table[state, action])
 
         # apply exponential decay to epsilon
+        # (we get greedier as the policy goes on)
         if done:
             self.eps = self.eps * .99
 
@@ -69,26 +71,29 @@ def evaluate_greedy_policy(qlearning, env, eps, niter=100):
         done = False
         score = 0 
         while not done: 
-            actions = qlearning.q_table[state]
+            action = qlearning.tabular_epsilon_greedy_policy(eps, state)
             (next_state, reward, done) = env.step(action) 
             state = next_state
             score += reward 
         
         if (score > 0): num_times_reached +=1 
 
+    print("numerator: {}".format(num_times_reached))
     frac = num_times_reached / niter
     return frac 
-
+ 
 if __name__ == "__main__":
     env = GridWorld(MAP3)
-    eps = 1.0 
-
+    eps = 1.0
+    seed = 3
+    np.random.seed(seed)
     qlearning = QLearning(env.get_num_states(), env.get_num_actions(), eps)
  
     ## TODO: write training code here
     num_episodes = 1000 
     num_states = env.get_num_states() 
-    total_reward =   0 
+    total_reward = 0 
+    cum_rewards = []
     
     for ep in range(num_episodes):    
         state = env.reset() 
@@ -103,6 +108,9 @@ if __name__ == "__main__":
             print("state {} action {}".format(state, action))
             score += reward
         
+    
+        cum_rewards.append(score)
+        
         print("Episode: {}, Score: {}".format(ep, score))
         total_reward += score 
         
@@ -111,3 +119,16 @@ if __name__ == "__main__":
     # evaluate the greedy policy to see how well it performs
     frac = evaluate_greedy_policy(qlearning, env, eps)
     print("Finding goal " + str(frac) + "% of the time.")
+
+
+    ## plotting stuff
+    episodes = np.linspace(1, num_episodes, num=num_episodes)
+    print(len(cum_rewards))
+    print(episodes.shape[0])
+
+    plt.plot(episodes, cum_rewards)
+    plt.xlabel('# of episodes passed') 
+    plt.ylabel('cumulative rewards')
+    plt.title('# of episodes vs. Cumulative Rewards')
+    plt.show()
+
