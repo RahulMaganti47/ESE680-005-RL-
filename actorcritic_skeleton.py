@@ -11,7 +11,7 @@ class ActorCritic(object):
 
         #RBF Function Approximator
         self.num_rbf_centers = 5j
-        self.rbf_centers = np.mgrid[-1:1:self.num_rbf_centers, -1:1.5:self.num_rbf_centers, -1:1:self.num_rbf_centers].reshape(3, -1).T
+        self.rbf_centers = np.mgrid[0:1:self.num_rbf_centers, 0:1.5:self.num_rbf_centers, 0:1:self.num_rbf_centers].reshape(3, -1).T
         self.w = np.zeros((self.rbf_centers.shape[0]))
         self.rbf_sigma = 0.1
 
@@ -41,7 +41,7 @@ class ActorCritic(object):
     returns: real valued feature vector R^(num_rbf_centers**2)
     """
     def get_rbf_feature(self, state):
-        out = np.exp(-np.square(np.linalg.norm(self.rbf_centers - state, axis=1))/2.*self.rbf_sigma**2)
+        out = np.exp(-np.square(np.linalg.norm(self.rbf_centers - state, axis=1))/(2.*self.rbf_sigma**2))
         return out
     
     """
