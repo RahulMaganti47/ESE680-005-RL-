@@ -116,14 +116,6 @@ def train(env, model):
                 print(f"EPISODE:{i}, STEP:{episode_length}, RETURN:{episode_returns} CURR_ACTION:{action}")
             episode_length+=1
         total_returns.append(sum_episode_returns)
-        if i % 10 == 0:
-            plt.figure(2)
-            plt.ion()
-            plt.cla()
-            plt.plot(range(len(total_returns)), total_returns)
-            plt.pause(0.1)
-            plt.show()
-
     return total_returns
 
 
