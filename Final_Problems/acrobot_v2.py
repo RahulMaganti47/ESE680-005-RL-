@@ -133,4 +133,4 @@ if __name__ == "__main__":
     plt.title('Episodes vs. Cumulative Rewards')
     plt.xlabel('Episode')
     plt.ylabel('Rewards')
-    pl.show()
+    plt.show()
