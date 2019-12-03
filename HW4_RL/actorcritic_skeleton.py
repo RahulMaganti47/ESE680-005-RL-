@@ -14,7 +14,7 @@ class ActorCritic(object):
 
         #RBF Function Approximator
         self.num_rbf_centers = 5j
-        self.rbf_centers = np.mgrid[0:1:self.num_rbf_centers, 0:1.5:self.num_rbf_centers, 0:1:self.num_rbf_centers].reshape(3, -1).T
+        self.rbf_centers = np.mgrid[0:1:self.num_rbf_centers, 0:1:self.num_rbf_centers, 0:1:self.num_rbf_centers].reshape(3, -1).T
         self.w = np.zeros((self.rbf_centers.shape[0]))
         self.rbf_sigma = 0.1
 
@@ -59,8 +59,7 @@ class ActorCritic(object):
     """
     def get_value(self, norm_state):
         #1) Normalize State & Get RBF Features x = (x_1(s), x_2(s)...)
-        x = self.get_rbf_feature(norm_state)
-
+        x = self.get_rbf_feature(norm_state) 
         #2) Use RBF Features with Weights to get value
         value = np.squeeze(np.dot(x, self.w))
         return value
@@ -123,24 +122,12 @@ def train(env, model):
             episode_length+=1
         total_returns.append(sum_episode_returns)
 
-        if sum_episode_returns > max_episode_returns:
+        if i > 0 and i % 100 == 0:
             with open('thetas.pkl', 'wb') as f:
                 pickle.dump(model.thetas, f)
 
             with open('w.pkl', 'wb') as f:
                 pickle.dump(model.w, f) 
-            max_episode_returns = sum_episode_returns
-
-        if i > 0 and i % 100 == 0:
-            N = 100
-            PAST100 = np.convolve(total_returns[0:i], np.ones(N)/N, mode='valid')
-            plt.figure(2)
-            plt.ion()
-            plt.cla()
-            plt.plot(range(PAST100.size), PAST100)
-            plt.pause(0.1)
-            plt.show()
-
     return total_returns
 
 
@@ -149,12 +136,28 @@ if __name__ == "__main__":
     policy = ActorCritic(env, sigma=0.5, alpha_value=5e-2, alpha_policy=1e-2)
     total_returns = train(env, policy)
 
+    with open('total_returns.pkl', 'wb') as f:
+        pickle.dump(total_returns, f)
+
+
+    # with open('total_returns.pkl', 'rb') as f:
+    #     total_returns = pickle.load(f)
+
+    N = 100
+    PAST100 = np.convolve(total_returns, np.ones(N)/N, mode='valid')
+    plt.figure(2)
+    plt.plot(range(PAST100.size), PAST100)
+    plt.pause(0.1)
+    plt.show(block=True)
+
     #Test Policy
-    policy.load()
+    # policy.load()
     state = env.reset()
     norm_state = policy.normalize_state(state)
     done = False
     while not done:
         act = policy.act(norm_state)
         next_state, _, done, _ = env.step([act])
+        norm_state = policy.normalize_state(next_state)
         env.render()
+    env.close()
