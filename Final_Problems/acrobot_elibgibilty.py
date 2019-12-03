@@ -34,16 +34,6 @@ class Policy(nn.Module):
         action = m.sample()
         return action.item() - 1, m.log_prob(action)
 
-    def select_torque(self, state):
-        rand_var = random.uniform(0, 1)
-        if (rand_var > .5):
-            action = -1 
-        else: 
-            action = 
-             
-        return action
-
-
 def compute_rewards(rewards, gamma):
     discounted_rewards = np.zeros(len(rewards))
     moving_add = 0
@@ -65,20 +55,27 @@ class Critic(nn.Module):
         x = F.relu(self.l1(state)) 
         x = self.l2(x) 
         return F.softmax(x, dim=1)
-    """
-    def td_error(self, reward, value_next, value_now, gamma, done, lr, I):  
-        eligibility *= self.lambd*gamma
-        td_error = reward + gamma*(1-done)*value_next - value_now 
-        state_values += lr * td_error * eligibility 
-        if done: I = I * gamma 
-        return td_error
-    """
+
+def train_select_torque(n_episodes, policy, print_every=1): 
+    total_rewards = [] 
+    max_iters = 500 
+    for ep in range(n_episodes): 
+        _ = env.reset()
+        score = 0 
+        for _ in range(max_iters): 
+            action = np.random.choice([-1, 1], 1, p=[.5, .5])[0]
+            (_, reward, _, _) = env.step(action)
+            score += reward 
+
+        total_rewards.append(score) 
+        print("Episode: {}, Score: {}".format(ep, score)) 
     
+    return total_rewards
 
 def train(n_episodes, policy, critic, gamma, print_every=4):
     optimizer = optim.Adam(policy.parameters(), lr=0.01)
-    optimizer_v = optim.Adam(critic.parameters(), lr=.05)
-    scores_deque = deque(maxlen=100)
+    #optimizer_v = optim.Adam(critic.parameters(), lr=.05)
+    scores_deque = deque()
     
     total_rewards = [] 
     for ep in range(n_episodes):  
@@ -90,15 +87,13 @@ def train(n_episodes, policy, critic, gamma, print_every=4):
         done = False
         
         while not done: 
-            #action = policy.select_torque(state)
-            action, log_prob = policy.act(state)
+            action, log_prob = policy.act(state) 
             value = critic.forward(state) 
             values.append(value) 
             traj_log_probs.append(log_prob)
             next_state, reward, done, _ = env.step(action) 
             score += reward 
             rewards.append(reward) 
-            #env.render() 
 
             state = next_state 
 
@@ -109,6 +104,7 @@ def train(n_episodes, policy, critic, gamma, print_every=4):
         disc_rewards = torch.tensor([disc_rewards]).float()  
     
         values = torch.cat(values) 
+
         # advantage: discounted_rewards - function approximated values 
         advantage = disc_rewards - values
     
@@ -120,10 +116,10 @@ def train(n_episodes, policy, critic, gamma, print_every=4):
     
         
         #value_loss = Variable(value_loss, requires_grad = True)
+
         # MSE loss 
         value_loss_1 = advantage.pow(2).mean()
         value_loss_1 = Variable(value_loss_1, requires_grad = True)
-
         #create one loss function for actor and critic
         total_loss = torch.stack([policy_loss, value_loss_1]).sum()
        
@@ -132,22 +128,14 @@ def train(n_episodes, policy, critic, gamma, print_every=4):
         total_loss.backward() 
         optimizer.step()
 
-        #add gradient trace
-        
-        #critic.lambd = torch.tensor(critic.lambd)
-        #for p in critic.parameters(): 
-        #    p.grad = torch.tensor(p.grad)
-        #    p.grad = p.grad * critic.lambd
-        # add new gradient 
-        
         if ep % print_every == 0:
             print('Episode {}\tAverage Score: {:.2f}'.format(ep, np.mean(scores_deque)))        
     
-    return total_rewards
+    return scores_deque
 
     def load(self):
         with open('w.pkl', 'rb') as f:
-            self.w = pickle.load(f)
+            self.w = pickle.load(f) 
         
         with open('thetas.pkl', 'rb') as f:
             self.thetas = pickle.load(f)
@@ -155,21 +143,24 @@ def train(n_episodes, policy, critic, gamma, print_every=4):
 if __name__ == "__main__":
 
     env = gym.make('Acrobot-v1')
-    env.seed(0)
+    seed = 1
+    env.seed(seed) 
     print('observation space:', env.observation_space)
     print('action space:', env.action_space)
 
-    num_episodes = 500 
+    num_episodes = 1000  
     gamma = .99 
     policy = Policy()
     critic = Critic() 
     total_rewards = train(num_episodes, policy, critic, gamma) 
-     
+    #total_rewards = train_select_torque(num_episodes, policy)
+
     # Plotting  
     plt.plot(range(len(total_rewards)), total_rewards, 'b-', label="training curve")
-    plt.axhline(max(total_rewards), 0, len(total_rewards), '-b', label="maximum average reward") 
+    plt.axhline(y=max(total_rewards), color='r', linestyle='-', label="maximum average reward") 
     plt.legend(loc="upper left")  
     plt.title('Episodes vs. Cumulative Rewards')
     plt.xlabel('Episode #')
     plt.ylabel('Cumulative Reward')
     plt.show()
+
